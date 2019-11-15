@@ -1,0 +1,69 @@
+---
+- name: Backup GP prod&stage databases to local folder
+  hosts: '{{ hostlist | default("all") }}'
+  remote_user: '{{ _remote_user }}'
+  become: true
+
+  tasks:
+    - include_vars:
+        file: ../../config/database.yml
+        name: railsdb
+
+  # required for postgresql_ ansible tasks
+    - apt:
+        name: python3-psycopg2,acl
+
+    - file:
+        path: /tmp/pgdumps/
+        state: directory
+        owner: postgres
+        group: postgres
+
+#  issues with postgres user /var/tmp access https://github.com/ansible/ansible/issues/16048
+    - name: Dump database except Oz_books
+      become_user: postgres
+      postgresql_db:
+        name: '{{ railsdb.production.database }}'
+        state: dump
+        target: '/tmp/pgdumps/{{ _host_name }}_main.bz2'
+        target_opts: -c -T oz_books # clean dump with DROPs
+
+    - name: Dump database Oz_books only
+      become_user: postgres
+      postgresql_db:
+        name: '{{ railsdb.production.database }}'
+        state: dump
+        target: '/tmp/pgdumps/{{ _host_name }}_oz_books.bz2'
+        target_opts: -c -t oz_books # clean dump with DROPs
+      when: dump_ozbooks is defined
+
+    - name: Download dumps locally
+      fetch:
+        src: '/tmp/pgdumps/{{ item }}.bz2'
+        dest: '../../tmp/pgdumps/{{ item }}.bz2'
+        flat: yes
+        fail_on_missing: no
+      with_items:
+        - '{{ _host_name }}_main'
+        - '{{ _host_name }}_oz_books'
+      when: pgdump_remote is not defined
+
+    - name: Set local user permissions for rsync to work
+      file:
+        path: /tmp/pgdumps/
+        state: directory
+        owner: '{{ _remote_user }}'
+        group: '{{ _remote_user }}'
+        recurse: yes
+
+    - name: copy files from old to new node
+      become: false
+      shell: 'rsync -qrpt --delete --compress -e "ssh -o StrictHostKeyChecking=no" /tmp/pgdumps/ {{ groups["new"][0] }}:/tmp/pgdumps/'
+      when: pgdump_remote is defined
+
+    - file:
+        path: '/tmp/pgdumps/{{ item }}.bz2'
+        state: absent
+      with_items:
+        - '{{ _host_name }}_main'
+        - '{{ _host_name }}_oz_books'

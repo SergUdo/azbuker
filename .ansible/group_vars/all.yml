@@ -1,0 +1,13 @@
+---
+_remote_user: joe
+_rbenv: v1.1.1
+_locale: ru_RU.UTF-8
+
+_server_url: azbuker.ru
+_host_name: azbuker
+
+_ruby: 2.1.10
+_old_ruby: 2.1.5
+
+_apps_path: /home/joe/apps
+_old_apps_path: /usr/sites

@@ -1,0 +1,70 @@
+---
+- name: Restore GP prod&stage databases from folder
+  hosts: '{{ hostlist | default("all") }}'
+  remote_user: '{{ _remote_user }}'
+  become: true
+
+  tasks:
+    - include_vars:
+        file: ../../config/database.yml
+        name: railsdb
+
+  # required for postgresql_ ansible tasks
+    - apt:
+        name: python3-psycopg2,acl
+
+    - file:
+        path: /tmp/pgdumps/
+        state: directory
+        owner: postgres
+        group: postgres
+        recurse: yes
+
+    - name: Upload main dump
+      copy:
+        dest: '/tmp/pgdumps/{{ _host_name }}_main.bz2'
+        src: '../../tmp/pgdumps/{{ _host_name }}_main.bz2'
+      when: pgdump_remote is not defined
+
+    - name: Upload ozbooks dump
+      copy:
+        dest: '/tmp/pgdumps/{{ _host_name }}_oz_books.bz2'
+        src: '../../tmp/pgdumps/{{ _host_name }}_oz_books.bz2'
+      when: (pgdump_remote is not defined) and (dump_ozbooks is defined)
+
+    #  issues with postgres user /var/tmp access https://github.com/ansible/ansible/issues/16048
+    - name: Restore main
+      become_user: postgres
+      postgresql_db:
+        name: '{{ railsdb.production.database }}'
+        state: restore
+        target: '/tmp/pgdumps/{{ _host_name }}_main.bz2'
+
+    - name: Restore oz_books
+      become_user: postgres
+      postgresql_db:
+        name: '{{ railsdb.production.database }}'
+        state: restore
+        target: '/tmp/pgdumps/{{ _host_name }}_oz_books.bz2'
+      when: dump_ozbooks is defined
+
+    - file:
+        path: '/tmp/pgdumps/{{ item }}.bz2'
+        state: absent
+      with_items:
+        - '{{ _host_name }}_main'
+        - '{{ _host_name }}_oz_books'
+
+    - name: Revert dumps folder permissions to local user
+        file:
+          path: /tmp/pgdumps/
+          state: directory
+          owner: '{{ _remote_user }}'
+          group: '{{ _remote_user }}'
+          recurse: yes
+
+# 2check
+# sudo -u postgres psql -U postgres
+# \du
+# \l
+# SELECT rolpassword FROM pg_authid;
