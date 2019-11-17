@@ -302,11 +302,15 @@ GEM
       json (>= 1.8, < 3)
       simplecov-html (~> 0.10.0)
     simplecov-html (0.10.2)
+    slim (3.0.9)
+      temple (>= 0.7.6, < 0.9)
+      tilt (>= 1.3.3, < 2.1)
     sprockets (2.2.3)
       hike (~> 1.2)
       multi_json (~> 1.0)
       rack (~> 1.0)
       tilt (~> 1.1, != 1.3.0)
+    temple (0.8.2)
     terminal-notifier-guard (1.7.0)
     therubyracer (0.12.3)
       libv8 (~> 3.16.14.15)
@@ -375,6 +379,7 @@ DEPENDENCIES
   rspec-rails (~> 2.14)
   sass-rails (~> 3.2.6)
   simplecov
+  slim
   terminal-notifier-guard
   therubyracer
   uglifier

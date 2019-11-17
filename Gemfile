@@ -13,6 +13,7 @@ gem 'meta_search', '~> 1.1'
 gem 'sass-rails', '~> 3.2.6'
 gem 'therubyracer'
 gem 'coffee-rails', '~> 3.2.2'
+gem 'slim'
 
 gem 'whenever', '~> 0.8', :require => false
 
